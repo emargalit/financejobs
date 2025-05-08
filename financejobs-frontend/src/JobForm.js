@@ -1,44 +1,55 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 
 function Spinner() {
-    return (
-      <svg
-        className="animate-spin h-5 w-5 mr-2 text-white inline"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          className="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-        />
-        <path
-          className="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v8z"
-        />
-      </svg>
-    );
+  return (
+    <svg
+      className="animate-spin h-5 w-5 mr-2 text-white inline"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v8z"
+      />
+    </svg>
+  );
 }
 
 function JobForm({ onJobPosted }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    company_name: '',
+    company_name: '', 
     location: '',
     salary: '',
     apply_link: ''
-  });
+  });  
 
-  const formRef = useRef(null);
+  const [companies, setCompanies] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL}/api/companies/`)
+      .then(res => res.json())
+      .then(data => {
+        console.log("Fetched companies:", data);  
+        setCompanies(data);
+      })
+      .catch(err => toast.error("Failed to load companies"));
+  }, []);  
 
   const handleChange = (e) => {
     setFormData(prevState => ({
@@ -51,43 +62,37 @@ function JobForm({ onJobPosted }) {
     e.preventDefault();
     setIsSubmitting(true);
     const loadingToastId = toast.loading('Posting your job...');
-  
-    fetch('http://localhost:8000/api/jobs/', {
+
+    fetch(`${process.env.REACT_APP_API_URL}/api/jobs/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(formData)
     })
-    .then(response => {
-      if (response.ok) {
-        toast.success('Job posted successfully!', { id: loadingToastId }); 
-        if (formRef.current) {
-          formRef.current.scrollIntoView({ behavior: 'smooth' });
+      .then(response => {
+        if (response.ok) {
+          toast.success('Job posted successfully!', { id: loadingToastId });
+          formRef.current?.scrollIntoView({ behavior: 'smooth' });
+          setFormData({
+            title: '',
+            description: '',
+            company_id: '',
+            location: '',
+            salary: '',
+            apply_link: ''
+          });
+          onJobPosted?.();
+        } else {
+          toast.error('Failed to post job.', { id: loadingToastId });
         }
-        setFormData({
-          title: '',
-          description: '',
-          company_name: '',
-          location: '',
-          salary: '',
-          apply_link: ''
-        });
-        if (onJobPosted) {
-          onJobPosted();
-        }
-      } else {
-        toast.error('Failed to post job.', { id: loadingToastId }); 
-      }
-    })
-    .catch(error => {
-      console.error('Error posting job:', error);
-      toast.error('An error occurred.', { id: loadingToastId });
-    })
-    .finally(() => {
-      setIsSubmitting(false);
-    });
-  };  
+      })
+      .catch(error => {
+        console.error('Error posting job:', error);
+        toast.error('An error occurred.', { id: loadingToastId });
+      })
+      .finally(() => setIsSubmitting(false));
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-4 bg-white shadow rounded">
@@ -147,19 +152,19 @@ function JobForm({ onJobPosted }) {
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-3 rounded-md flex justify-center items-center transition duration-300 disabled:opacity-50"
             disabled={isSubmitting}
           >
-          {isSubmitting ? (
+            {isSubmitting ? (
               <>
-              <Spinner />
-              Posting...
+                <Spinner />
+                Posting...
               </>
-          ) : (
+            ) : (
               "Post Job"
-          )}
+            )}
           </button>
         </form>
       </div>
     </div>
-  );  
+  );
 }
 
 export default JobForm;

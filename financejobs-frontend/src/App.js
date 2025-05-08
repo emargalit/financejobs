@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import HomePage from './HomePage';
 import JobForm from './JobForm';
+import JobDetail from './JobDetail';
+import NewsletterForm from './NewsletterForm'; 
 import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
@@ -14,6 +16,7 @@ function App() {
             <div className="space-x-4">
               <Link to="/" className="text-gray-700 hover:text-blue-600 hover:underline">Home</Link>
               <Link to="/post-job" className="text-gray-700 hover:text-blue-600 hover:underline">Post a Job</Link>
+              <Link to="/newsletter" className="text-gray-700 hover:text-blue-600 hover:underline">Newsletter</Link>
             </div>
           </div>
         </nav>
@@ -23,6 +26,8 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/post-job" element={<JobForm />} />
+              <Route path="/newsletter" element={<NewsletterForm />} />
+              <Route path="/jobs/:id" element={<JobDetail />} />
             </Routes>
           </div>
         </div>
