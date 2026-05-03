@@ -24,3 +24,11 @@ class Job(models.Model):
 
     def __str__(self):
         return self.title
+    
+    
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField(unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email

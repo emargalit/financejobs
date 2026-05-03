@@ -16,7 +16,8 @@ function JobsList({ jobs, loading }) {
             >
               {job.title}
             </Link>
-            <p className="text-sm text-gray-600">{job.company?.name}</p>
+            <p className="text-md font-semibold text-gray-800">{job.company?.name}</p> {/* ✅ Emphasized */}
+            <p className="text-sm text-gray-600">{job.location}</p>
             {job.job_type && (
               <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                 {job.job_type}

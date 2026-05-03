@@ -30,7 +30,7 @@ function JobDetail() {
             })}
           </p>
           <div
-            className="prose max-w-none"
+            className="prose max-w-none prose-ul:list-disc prose-ul:pl-5"
             dangerouslySetInnerHTML={{ __html: job.description }}
           />
           <a href={job.apply_link} target="_blank" rel="noreferrer">

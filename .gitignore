@@ -1,15 +1,22 @@
-# Python
-venv/
-__pycache__/
-*.py[cod]
-db.sqlite3
-.env
+# Django
+staticfiles/
+media/
+*.log
 
-# Node
-node_modules/
-build/
+# Env variants
+.env.*
+!.env.example
+
+# Python packaging
+*.egg-info/
 dist/
+build/
 
-# OS
-.DS_Store
-Thumbs.db
+# IDE
+.vscode/
+.idea/
+
+**/__pycache__/
+*.pyc
+*.pyo
+*.sqlite3

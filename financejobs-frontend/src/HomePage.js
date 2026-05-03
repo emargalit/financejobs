@@ -9,7 +9,18 @@ function HomePage() {
   const [selectedJobType, setSelectedJobType] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
-  const allLocations = [...new Set(jobs.map(job => job.location))].sort();
+
+  const allLocations = [
+    ...new Set(
+      jobs.flatMap((job) =>
+        (job.location || "")
+          .split("|")
+          .map((loc) => loc.trim())
+          .filter(Boolean)
+      )
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
   const allCompanies = [...new Set(jobs.map(job => job.company?.name).filter(Boolean))].sort();
 
   useEffect(() => {
@@ -21,15 +32,24 @@ function HomePage() {
       });
   }, []);
   
-  const filteredJobs = jobs.filter(job =>
-    (job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredJobs = jobs.filter(job => {
+    const jobLocations = (job.location || "")
+      .split("|")
+      .map((loc) => loc.trim())
+      .filter(Boolean);
+
+    const matchesSearch =
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.company?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (selectedJobType ? job.job_type === selectedJobType : true) &&
-    (selectedLocation ? job.location === selectedLocation : true) &&
-    (selectedCompany ? job.company?.name === selectedCompany : true)
-  );
+      job.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesJobType = selectedJobType ? job.job_type === selectedJobType : true;
+    const matchesLocation = selectedLocation ? jobLocations.includes(selectedLocation) : true;
+    const matchesCompany = selectedCompany ? job.company?.name === selectedCompany : true;
+
+    return matchesSearch && matchesJobType && matchesLocation && matchesCompany;
+  });
 
   return (
     <div
@@ -39,16 +59,16 @@ function HomePage() {
       <div className="bg-white/50 backdrop-blur-xs min-h-screen py-8 px-4 md:px-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="col-span-1">
-          <Sidebar
-            selectedJobType={selectedJobType}
-            setSelectedJobType={setSelectedJobType}
-            selectedLocation={selectedLocation}
-            setSelectedLocation={setSelectedLocation}
-            selectedCompany={selectedCompany}
-            setSelectedCompany={setSelectedCompany}
-            allLocations={allLocations}
-            allCompanies={allCompanies}
-          />
+            <Sidebar
+              selectedJobType={selectedJobType}
+              setSelectedJobType={setSelectedJobType}
+              selectedLocation={selectedLocation}
+              setSelectedLocation={setSelectedLocation}
+              selectedCompany={selectedCompany}
+              setSelectedCompany={setSelectedCompany}
+              allLocations={allLocations}
+              allCompanies={allCompanies}
+            />
           </div>
           <div className="col-span-3">
             <input
