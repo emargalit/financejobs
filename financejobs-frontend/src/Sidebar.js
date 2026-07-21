@@ -12,9 +12,10 @@ function Sidebar({
   allCompanies,
 }) {
   const jobTypes = [
-    "Festanstellung",
-    "Praktika / Traineestellen",
-    "Befristete Anstellung",
+    "Permanent",
+    "Internships / Graduate Programs",
+    "Fixed-Term / Contract",
+    "Part-Time"
   ];
 
   return (
