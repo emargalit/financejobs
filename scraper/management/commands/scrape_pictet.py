@@ -38,12 +38,35 @@ def clean_html_fragment(container):
             output.append(
                 f'<h3 style="font-weight:700;font-size:1.125rem;margin-top:1rem;margin-bottom:0.5rem;">{text}</h3>'
             )
+
         elif elem.name == "li":
             output.append(
-                f'<li style="display:list-item;margin-bottom:0.25rem;">{text}</li>'
+                f'<ul style="list-style-type:disc;padding-left:1.5rem;margin-bottom:0.75rem;">'
+                f'<li style="margin-bottom:0.35rem;">{text}</li>'
+                f'</ul>'
             )
+
         else:
-            output.append(f'<p style="margin-bottom:0.75rem;">{text}</p>')
+            # Fix paragraphs that contain bullet characters like:
+            # "• Managing... • Coordinating... • Becoming..."
+            if "•" in text:
+                parts = [part.strip() for part in text.split("•") if part.strip()]
+
+                if parts:
+                    output.append(
+                        '<ul style="list-style-type:disc;padding-left:1.5rem;margin-bottom:0.75rem;">'
+                    )
+
+                    for part in parts:
+                        output.append(
+                            f'<li style="margin-bottom:0.35rem;line-height:1.6;">{part}</li>'
+                        )
+
+                    output.append("</ul>")
+            else:
+                output.append(
+                    f'<p style="margin-bottom:0.75rem;line-height:1.6;">{text}</p>'
+                )
 
     cleaned = "".join(output).strip()
     return f"<div>{cleaned}</div>" if cleaned else "No description available."
