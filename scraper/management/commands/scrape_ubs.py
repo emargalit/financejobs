@@ -1,3 +1,5 @@
+from django.conf import settings
+from scraper.persistence import refresh_scraped_job
 import asyncio
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand
@@ -8,7 +10,7 @@ async def scrape():
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=settings.SCRAPER_HEADLESS)
         context = await browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -73,29 +75,17 @@ async def scrape():
                 """)
                 await page.wait_for_selector("p.jobDetailTextArea", timeout=10000)
 
-                # ✅ Preserve HTML structure of description
+                soup = BeautifulSoup(await page.content(), "html.parser")
+                # Preserve the description after the lazy-loaded content is present.
                 desc_tags = soup.select("p.jobDetailTextArea")
                 description = "\n".join(str(tag) for tag in desc_tags) if desc_tags else "No description."
 
                 company_obj, _ = await sync_to_async(Company.objects.get_or_create)(name="UBS")
 
-                is_duplicate = await sync_to_async(Job.objects.filter(
-                    title=title, company=company_obj, location=location
-                ).exists)()
-
-                if not is_duplicate:
-                    job = await sync_to_async(Job.objects.create)(
-                        title=title,
-                        company=company_obj,
-                        location=location,
-                        job_type="",
-                        salary="",
-                        apply_link=job_info["href"],
-                        description=description
-                    )
-                    print("✅ Saved:", job.id, title)
-                else:
-                    print("⏭ Skipped duplicate:", title)
+                job = await sync_to_async(refresh_scraped_job)(
+                    title=title, company=company_obj, location=location,
+                    apply_link=job_info['href'], description=description)
+                print('Saved or refreshed:', job.id, job.title)
 
                 # Go back to job listing page
                 await page.goto(search_url)

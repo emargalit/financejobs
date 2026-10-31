@@ -20,3 +20,7 @@ build/
 *.pyc
 *.pyo
 *.sqlite3
+.env
+venv/
+.pytest_cache/
+.coverage

@@ -1,3 +1,5 @@
+from django.conf import settings
+from scraper.persistence import refresh_scraped_job
 import asyncio
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand
@@ -10,7 +12,7 @@ async def scrape():
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=settings.SCRAPER_HEADLESS)
         context = await browser.new_context()
         page = await context.new_page()
 
@@ -111,26 +113,10 @@ async def scrape():
 
                 await detail_page.close()
 
-                # Check for duplicates
-                exists = await sync_to_async(Job.objects.filter(
-                    title=job["title"],
-                    location=job["location"],
-                    company=company_obj
-                ).exists)()
-
-                if not exists:
-                    new_job = await sync_to_async(Job.objects.create)(
-                        title=job["title"],
-                        company=company_obj,
-                        location=job["location"],
-                        job_type="",
-                        salary="",
-                        apply_link=job["url"],
-                        description=description
-                    )
-                    print(f"✅ Saved: {new_job.id} {job['title']}")
-                else:
-                    print(f"⏭ Skipped duplicate: {job['title']}")
+                saved = await sync_to_async(refresh_scraped_job)(
+                    title=job['title'], company=company_obj, location=job['location'],
+                    apply_link=job['url'], description=description)
+                print('Saved or refreshed:', saved.id, saved.title)
 
             except Exception as e:
                 print(f"❌ Error on job {idx}: {e}")

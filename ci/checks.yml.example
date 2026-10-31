@@ -1,0 +1,32 @@
+name: Project checks
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-only-non-production-secret-which-is-long-enough-for-checks
+      DEBUG: 'True'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py test --settings=backend.test_settings
+      - run: python manage.py makemigrations --check --dry-run
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: financejobs-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: financejobs-frontend/package-lock.json
+      - run: npm ci
+      - run: npm test -- --watchAll=false --runInBand
+      - run: npm run build
