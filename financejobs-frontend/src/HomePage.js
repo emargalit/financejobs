@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Search, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import JobsList from './JobsList';
 import Sidebar from './Sidebar';
 import { api } from './api';
@@ -41,15 +43,17 @@ export default function HomePage() {
 
   const choose = setter => value => { setter(value); setPage(1); };
   return (
-    <div className="min-h-screen w-full bg-cover bg-center" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/seanpollock.jpg)` }}>
-      <div className="bg-white/70 min-h-screen py-8 px-4 md:px-10">
+    <div className="opportunities-page">
+      <header className="opportunities-hero"><div><p className="section-eyebrow">SWISS FINANCE JOBS</p><h1>Your next chapter<br /><span>in Swiss finance.</span></h1><p className="hero-description">Explore opportunities at financial institutions across Switzerland. Find your role and apply directly with the employer.</p></div><Link to="/post-job" className="hero-employer-link">Hiring exceptional talent? <span>Post a job <ArrowUpRight size={15} /></span></Link></header>
+      <div className="opportunities-body">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <aside className="col-span-1">
             <Sidebar selectedJobType={selectedJobType} setSelectedJobType={choose(setSelectedJobType)} selectedLocation={selectedLocation} setSelectedLocation={choose(setSelectedLocation)} selectedCompany={selectedCompany} setSelectedCompany={choose(setSelectedCompany)} allLocations={filters.locations} allCompanies={filters.companies} />
           </aside>
           <div className="md:col-span-3 min-w-0">
             <label htmlFor="job-search" className="sr-only">Search jobs</label>
-            <input id="job-search" type="search" placeholder="Search jobs..." className="w-full mb-4 p-3 border rounded-md" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <div className="job-search-wrap"><Search size={20} aria-hidden="true" /><input id="job-search" type="search" placeholder="Search by role, institution or keyword" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+            <div className="results-heading"><h2>Open opportunities {!loading && !error && <span>{count}</span>}</h2>{(selectedJobType || selectedLocation || selectedCompany || searchTerm) && <button onClick={() => { setSelectedJobType(''); setSelectedLocation(''); setSelectedCompany(''); setSearchTerm(''); setPage(1); }}>Clear filters</button>}</div>
             {error ? <div role="alert" className="p-5 bg-white rounded"><p>{error}</p><button onClick={() => setRetry(retry + 1)} className="text-blue-700 underline mt-2">Retry</button></div> : <JobsList jobs={jobs} loading={loading} />}
             {!loading && !error && count > 20 && <nav aria-label="Job pages" className="flex justify-between items-center bg-white p-4 mt-4 rounded">
               <button disabled={page === 1} onClick={() => setPage(page - 1)} className="disabled:opacity-40 text-blue-700">Previous</button>

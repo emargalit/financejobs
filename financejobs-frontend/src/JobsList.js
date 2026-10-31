@@ -1,47 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { MapPin, ArrowUpRight, Clock3 } from 'lucide-react';
+import CompanyBadge, { displayDate } from './CompanyBadge';
 
-function JobsList({ jobs, loading }) {
-  if (loading) return <p>Loading jobs...</p>;
-
-  return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-semibold mb-4">Finance Jobs in Switzerland</h2>
-      {jobs.length === 0 && <p>No current jobs match your search. Try another filter or check back soon.</p>}
-      <ul className="space-y-6">
-        {[...jobs].sort((a, b) => new Date(b.posted_at) - new Date(a.posted_at)).map(job => (
-          <li key={job.id} className="bg-white p-5 rounded-lg shadow hover:shadow-md transition">
-            <Link
-              to={`/jobs/${job.id}`}
-              className="text-xl font-bold text-blue-700 hover:underline"
-            >
-              {job.title}
-            </Link>
-            <p className="text-md font-semibold text-gray-800">{job.company?.name}</p> {/* ✅ Emphasized */}
-            <p className="text-sm text-gray-600">{job.location}</p>
-            {job.job_type && (
-              <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                {job.job_type}
-              </span>
-            )}
-            <p className="text-gray-400 text-sm mt-2">
-              Posted on {new Date(job.posted_at).toLocaleDateString("de-CH", {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              })}
-            </p>
-            <Link
-              to={`/jobs/${job.id}`}
-              className="inline-block mt-3 text-sm text-blue-600 hover:underline"
-            >
-              Apply
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );  
+export default function JobsList({ jobs, loading }) {
+  if (loading) return <div role="status" className="jobs-loading">Finding your next opportunity…<div className="job-skeleton" /><div className="job-skeleton" /><div className="job-skeleton" /></div>;
+  if (!jobs.length) return <div className="jobs-empty"><h2>No matching opportunities</h2><p>Try a different keyword or clear a filter to explore more roles.</p></div>;
+  return <ul className="job-cards">
+    {jobs.map(job => <li key={job.id} className="job-card">
+      <div className="job-card-top"><CompanyBadge name={job.company?.name} /><div className="min-w-0 flex-1">
+        <p className="job-employer">{job.company?.name}</p>
+        <h2><Link to={`/jobs/${job.id}`}>{job.title}</Link></h2>
+      </div><ArrowUpRight className="job-card-arrow" size={20} aria-hidden="true" /></div>
+      <div className="job-meta"><span><MapPin size={14} aria-hidden="true" />{job.location}</span>{job.work_schedule && <span><Clock3 size={14} aria-hidden="true" />{job.work_schedule}</span>}{job.job_type && <span className="job-type">{job.job_type}</span>}</div>
+      <div className="job-card-footer"><span>{job.source_posted_at ? `Posted ${displayDate(job.source_posted_at)}` : `Added ${displayDate(job.posted_at)}`}{job.source && <span className="source-label"> · Employer careers site</span>}</span><Link to={`/jobs/${job.id}`} aria-label={`View role: ${job.title}`}>View role <span aria-hidden="true">→</span></Link></div>
+    </li>)}
+  </ul>;
 }
-
-export default JobsList;

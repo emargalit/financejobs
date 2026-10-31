@@ -1,29 +1,36 @@
-from django.core.management import call_command
+import json
+from dataclasses import asdict
+from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
-from django.utils import timezone
-from jobs.models import Job
+from scraper.sources import SOURCES, collect
+from scraper.persistence import publish_source
 
-SOURCES = {'pictet': 'scrape_pictet', 'lgt': 'scrape_lgt', 'ubs': 'scrape_ubs', 'julius': 'scrape_julius', 'efinancialcareers': 'scrape_jobs'}
 
 class Command(BaseCommand):
-    help = 'Run headless scrapers and fail visibly when a source refreshes no listings.'
+    help = 'Validate five official Swiss careers feeds; publish with --apply. Failed feeds leave their listings untouched.'
 
     def add_arguments(self, parser):
         parser.add_argument('--source', choices=SOURCES, action='append')
+        parser.add_argument('--apply', action='store_true', help='Publish the validated feed and archive missing source jobs.')
+        parser.add_argument('--export', help='Write validated listings as JSON for review (not a database backup).')
 
     def handle(self, *args, **options):
-        failed = []
+        failed, exported = [], []
         for source in options['source'] or SOURCES:
-            started = timezone.now()
+            self.stdout.write(f'{source}: fetching official careers feed...', ending='\n')
+            self.stdout.flush()
             try:
-                call_command(SOURCES[source])
-                refreshed = Job.objects.filter(last_seen_at__gte=started).count()
-                if not refreshed:
-                    raise CommandError('No jobs refreshed; verify selectors and source availability.')
-                self.stdout.write(f'{source}: refreshed {refreshed} jobs')
+                listings = collect(source)
+                exported.extend(asdict(job) for job in listings)
+                report = publish_source(source, listings) if options['apply'] else {'validated': len(listings), 'published': False}
+                self.stdout.write(f'{source}: {json.dumps(report)}')
+                self.stdout.flush()
             except Exception as error:
                 failed.append(source)
-                self.stderr.write(f'{source}: {error}')
-        call_command('cleanup_expired_jobs', apply=True)
+                self.stderr.write(f'{source}: {type(error).__name__}: {error}')
+                self.stderr.flush()
+        if options['export']:
+            Path(options['export']).write_text(json.dumps(exported, ensure_ascii=False, indent=2))
         if failed:
-            raise CommandError('Refresh failed for: ' + ', '.join(failed))
+            raise CommandError('Feeds not updated: ' + ', '.join(failed))
+        self.stdout.write(self.style.SUCCESS('All requested feeds validated' + (' and published.' if options['apply'] else '. Dry run; nothing published.')))

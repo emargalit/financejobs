@@ -5,6 +5,7 @@ from django.core import signing
 from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Q
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from rest_framework import generics, serializers
 from rest_framework.filters import SearchFilter
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def active_jobs():
-    return Job.objects.filter(is_active=True, expires_at__gt=timezone.now()).select_related('company').order_by('-posted_at', '-id')
+    return Job.objects.filter(is_active=True, expires_at__gt=timezone.now()).select_related('company').annotate(listed_on=Coalesce('source_posted_at', TruncDate('posted_at'))).order_by('-listed_on', '-posted_at', '-id')
 
 
 class JobPagination(PageNumberPagination):

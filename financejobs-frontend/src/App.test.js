@@ -53,3 +53,13 @@ test('expired job shows an error instead of a broken detail page', async () => {
   render(<MemoryRouter initialEntries={['/jobs/1']}><Routes><Route path="/jobs/:id" element={<JobDetail />} /></Routes></MemoryRouter>);
   expect(await screen.findByRole('alert')).toHaveTextContent('It may have expired');
 });
+
+test('imported job displays employer attribution and applies on the original site', async () => {
+  fetch.mockImplementation(() => response({ id: 42, title: 'Portfolio Analyst', company: { name: 'LGT' }, location: 'Zürich', source: 'lgt', source_posted_at: '2026-10-25', last_seen_at: '2026-10-31T12:00:00Z', work_schedule: 'Full time', description: '<h2>Your role</h2><ul><li>Analyse portfolios</li></ul>', apply_link: 'https://lgt.wd3.myworkdayjobs.com/lgtcurrentvacancies/job/Zurich/analyst', source_url: 'https://lgt.wd3.myworkdayjobs.com/lgtcurrentvacancies/job/Zurich/analyst' }));
+  render(<MemoryRouter initialEntries={['/jobs/42']}><Routes><Route path="/jobs/:id" element={<JobDetail />} /></Routes></MemoryRouter>);
+  expect(await screen.findByRole('heading', { name: 'Portfolio Analyst' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Apply at LGT/ })).toHaveAttribute('href', 'https://lgt.wd3.myworkdayjobs.com/lgtcurrentvacancies/job/Zurich/analyst');
+  expect(screen.getByText('25 Oct 2026')).toBeInTheDocument();
+  expect(screen.getByText('31 Oct 2026')).toBeInTheDocument();
+  expect(screen.getByRole('listitem')).toHaveTextContent('Analyse portfolios');
+});

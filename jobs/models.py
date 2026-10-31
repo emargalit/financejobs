@@ -30,9 +30,17 @@ class Job(models.Model):
     expires_at = models.DateTimeField(default=listing_expiry, db_index=True)
     is_active = models.BooleanField(default=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
+    source = models.CharField(max_length=35, blank=True, db_index=True)
+    source_job_id = models.CharField(max_length=150, blank=True)
+    source_url = models.URLField(max_length=500, blank=True)
+    source_posted_at = models.DateField(null=True, blank=True)
+    work_schedule = models.CharField(max_length=100, blank=True)
 
     class Meta:
-        unique_together = ('title', 'company', 'location')
+        constraints = [
+            models.UniqueConstraint(fields=['source', 'source_job_id'], condition=~models.Q(source=''), name='unique_employer_source_job'),
+            models.UniqueConstraint(fields=['title', 'company', 'location'], condition=models.Q(source=''), name='unique_direct_job_title_location'),
+        ]
 
     def save(self, *args, **kwargs):
         self.description = clean_description(self.description)

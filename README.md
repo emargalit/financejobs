@@ -1,7 +1,7 @@
 # Swiss Finance Jobs
 
 Django/DRF API, React job board, Stripe Checkout for employer advertisements,
-manual publication in Django admin, and Playwright import commands.
+manual publication in Django admin and imports from five official employer careers feeds.
 
 ## Development
 
@@ -129,18 +129,36 @@ cron expressions below are suggestions, not provisioned resources:
 | --- | --- | --- |
 | `python manage.py retry_notifications` | `*/10 * * * *` | Recover failed paid-ad emails |
 | `python manage.py cleanup_expired_jobs --apply` | `0 3 * * *` | Archive expired records |
-| `python manage.py refresh_jobs` | `0 4 * * *` | Refresh external job listings |
+| `python manage.py refresh_jobs --apply` | `0 4 * * *` | Refresh external job listings |
 | `python manage.py send_newsletter --send` | `0 7 * * 1` | Weekly digest for confirmed subscribers |
 
-Cron services need the same database/environment as the backend. Install
-Playwright Chromium and OS dependencies in the scraper environment using
-`python -m playwright install --with-deps chromium`. Scrapers default to headless;
-set `SCRAPER_HEADLESS=False` for local troubleshooting. Test each source with
-`python manage.py refresh_jobs --source pictet` (or lgt/ubs/julius/efinancialcareers).
-Enable failure alerts for the scheduled service: a zero-result refresh fails
-visibly. Imported jobs are refreshed for 30 days from last observation, while
-paid listings never get modified or extended by scrapers. Source selectors still
-need live verification; unit tests do not verify third-party websites.
+The five active sources are **LGT**, **Julius Bär**, **Pictet**, **Vontobel** and
+**Lombard Odier**. Imports use the employers' public Workday / SuccessFactors
+careers feeds over HTTPS; Chromium is not needed. Only Swiss vacancies are
+published. Employer descriptions are sanitized and original application links
+are retained. The board is independent and does not claim an employer partnership.
+
+```sh
+# Preview a complete source without changing the database
+python manage.py refresh_jobs --source pictet --export /tmp/pictet-review.json
+# Fetch and publish all five feeds
+python manage.py refresh_jobs --apply
+# Each source also has its own command
+python manage.py scrape_lgt --apply
+```
+
+Each complete source is validated before its database transaction begins. Source
+and requisition ID prevent duplicate imports; employer posting dates remain
+separate from the import date. A successful complete refresh archives that
+source's missing listings. Failed, truncated or empty feeds leave its existing
+listings untouched and return a failing command status. Paid advertisements are
+never changed or archived by imports. Each observation renews imported listings
+for 30 days so a broken feed cannot leave stale jobs visible indefinitely.
+
+For a future scheduler use `python manage.py refresh_jobs --apply` with the same
+database and environment as the backend. No recurring scraper service has been
+provisioned. The legacy UBS and eFinancialCareers commands are outside the active
+five-source pipeline.
 
 Both cleanup and newsletter commands are dry runs unless passed `--apply` or
 `--send`. Weekly digests exclude unconfirmed/unsubscribed addresses and record
