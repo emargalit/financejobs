@@ -51,7 +51,7 @@ export default function JobForm() {
     <div className="bg-blue-50 border border-blue-100 p-5 rounded-lg mb-6">
       <h2 className="font-semibold">Standard listing · 30 days</h2>
       <p className="text-3xl font-bold text-blue-800 mt-2">{config ? `${(config.amount / 100).toLocaleString('en-CH')} ${config.currency.toUpperCase()}` : 'Loading price…'}</p>
-      <p className="mt-3">Enter your advertisement, pay securely with Stripe, and we’ll review it before publishing. Your 30 days start when the listing goes live.</p>
+      <p className="mt-3">Submit your job ad and pay securely with Stripe. We’ll publish it within 2 hours of payment. Your ad will stay live for 30 days from publication.</p>
       {config && <p className="mt-2 text-sm">Questions or a refund request? <a className="underline" href={`mailto:${config.contact_email}`}>{config.contact_email}</a></p>}
     </div>
     {params.has('cancelled') && <p role="status" className="bg-amber-50 p-3 mb-4">Checkout was cancelled. Your draft is saved in this tab; you can return to payment below.</p>}
