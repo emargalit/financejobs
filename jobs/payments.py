@@ -25,7 +25,9 @@ def retrieve_checkout(session_id):
 def create_checkout(submission):
     return stripe_client().v1.checkout.sessions.create({
         'mode': 'payment',
-        'payment_method_types': ['card'],
+        # Keep this advertising checkout on standard payments even when the
+        # Stripe account defaults to its Managed Payments merchant-of-record flow.
+        'managed_payments': {'enabled': False},
         'client_reference_id': str(submission.id),
         'customer_email': submission.contact_email,
         'metadata': {'submission_id': str(submission.id), 'application': 'swissfinancejobs'},

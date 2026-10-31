@@ -65,6 +65,8 @@ class WorkflowTests(TestCase):
             self.assertEqual(self.client.post('/api/checkout/', form, format='json').status_code, 200)
         self.assertEqual(create.call_count, 1)
         self.assertEqual(create.call_args.args[0]['line_items'][0]['price_data']['unit_amount'], 39000)
+        self.assertEqual(create.call_args.args[0]['managed_payments'], {'enabled': False})
+        self.assertNotIn('payment_method_types', create.call_args.args[0])
         self.assertEqual(JobSubmission.objects.count(), 1)
         self.assertEqual(Job.objects.count(), 0)
         self.assertEqual(len(mail.outbox), 0)
