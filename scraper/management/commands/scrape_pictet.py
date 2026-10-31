@@ -1,3 +1,5 @@
+from django.conf import settings
+from scraper.persistence import refresh_scraped_job
 import asyncio
 from urllib.parse import urljoin
 
@@ -234,31 +236,10 @@ async def scrape_job_details(context, company_obj, jobs):
 
             description = clean_html_fragment(description_container)
 
-            existing_job = await sync_to_async(
-                Job.objects.filter(
-                    company=company_obj,
-                    apply_link=job["url"],
-                ).first
-            )()
-
-            if existing_job:
-                existing_job.title = title
-                existing_job.location = job["location"]
-                existing_job.job_type = job["activity_area"] or ""
-                existing_job.description = description
-                await sync_to_async(existing_job.save)()
-                print(f"🔄 Updated: {title} | {job['location']}")
-            else:
-                new_job = await sync_to_async(Job.objects.create)(
-                    title=title,
-                    company=company_obj,
-                    location=job["location"],
-                    job_type=job["activity_area"] or "",
-                    salary="",
-                    apply_link=job["url"],
-                    description=description,
-                )
-                print(f"✅ Saved: {new_job.id} {title} | {job['location']}")
+            saved = await sync_to_async(refresh_scraped_job)(
+                title=title, company=company_obj, location=job['location'],
+                apply_link=job['url'], description=description)
+            print('Saved or refreshed:', saved.id, saved.title)
 
         except Exception as e:
             print(f"❌ Error on job {idx} ({job.get('title', 'unknown')}): {e}")
@@ -272,7 +253,7 @@ async def scrape():
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=settings.SCRAPER_HEADLESS)
         context = await browser.new_context()
         page = await context.new_page()
 

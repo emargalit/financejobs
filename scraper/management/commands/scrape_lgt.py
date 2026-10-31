@@ -1,3 +1,5 @@
+from django.conf import settings
+from scraper.persistence import refresh_scraped_job
 import asyncio
 from urllib.parse import urljoin
 
@@ -220,7 +222,7 @@ async def clear_all_location_checkboxes(page):
     count = await checked_boxes.count()
 
     for i in range(count):
-        checkbox = checked_boxes.nth(i)
+        checkbox = checked_boxes.first
         try:
             await checkbox.uncheck()
             await page.wait_for_timeout(300)
@@ -334,30 +336,10 @@ async def scrape_job_details(context, company_obj, jobs):
 
             description = clean_html_fragment(main)
 
-            existing_job = await sync_to_async(
-                Job.objects.filter(
-                    company=company_obj,
-                    apply_link=apply_link,
-                ).first
-            )()
-
-            if existing_job:
-                existing_job.title = title
-                existing_job.location = location or ""
-                existing_job.description = description
-                await sync_to_async(existing_job.save)()
-                print(f"🔄 Updated: {title} | {location}")
-            else:
-                new_job = await sync_to_async(Job.objects.create)(
-                    title=title,
-                    company=company_obj,
-                    location=location or "",
-                    job_type="",
-                    salary="",
-                    apply_link=apply_link,
-                    description=description,
-                )
-                print(f"✅ Saved: {new_job.id} {title} | {location}")
+            saved = await sync_to_async(refresh_scraped_job)(
+                title=title, company=company_obj, location=location,
+                apply_link=apply_link, description=description)
+            print('Saved or refreshed:', saved.id, saved.title)
 
         except Exception as e:
             print(f"❌ Error on job {idx} ({job.get('title', 'unknown')}): {e}")
@@ -370,7 +352,7 @@ async def scrape():
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=settings.SCRAPER_HEADLESS)
         context = await browser.new_context()
         page = await context.new_page()
 

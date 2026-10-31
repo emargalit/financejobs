@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import HomePage from './HomePage';
 import JobForm from './JobForm';
 import JobDetail from './JobDetail';
+import { ToastContainer } from 'react-toastify';
+import PaymentResult from './PaymentResult';
+import NewsletterAction from './NewsletterAction';
 import NewsletterForm from './NewsletterForm'; 
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -11,7 +14,7 @@ function App() {
     <Router>
       <div className="flex flex-col h-screen">
         <nav className="bg-white shadow sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-4 py-5 flex justify-between items-center">
+          <div className="max-w-6xl mx-auto px-4 py-5 flex flex-wrap gap-4 justify-between items-center">
             <Link to="/" className="flex items-center">
               <img
                 src="/logo_one.svg"
@@ -33,11 +36,16 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/post-job" element={<JobForm />} />
               <Route path="/newsletter" element={<NewsletterForm />} />
+              <Route path="/payment-result" element={<PaymentResult />} />
+              <Route path="/newsletter/confirm" element={<NewsletterAction action="confirm" />} />
+              <Route path="/newsletter/unsubscribe" element={<NewsletterAction action="unsubscribe" />} />
+              <Route path="*" element={<p>Page not found. <Link to="/">Browse jobs</Link></p>} />
               <Route path="/jobs/:id" element={<JobDetail />} />
             </Routes>
           </div>
         </div>
       </div>
+      <ToastContainer position="top-right" />
     </Router>
   );
 }

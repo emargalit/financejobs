@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { api } from './api';
+import { Link, useParams } from 'react-router-dom';
 
 function JobDetail() {
   const { id } = useParams();
   const [job, setJob] = useState(null);
 
+  const [error, setError] = useState('');
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/api/jobs/${id}/`)
-      .then(res => res.json())
-      .then(data => setJob(data));
+    const controller = new AbortController();
+    setJob(null); setError('');
+    api(`jobs/${id}/`, { signal: controller.signal })
+      .then(setJob)
+      .catch(err => { if (err.name !== 'AbortError') setError(err.message); });
+    return () => controller.abort();
   }, [id]);
-
-  if (!job) return <p>Loading job...</p>;
+  if (error) return <div role="alert"><p>This job could not be loaded. It may have expired.</p><p>{error}</p><Link to="/" className="underline text-blue-700">Browse current jobs</Link></div>;
+  if (!job) return <p role="status">Loading job...</p>;
 
   return (
     <div
@@ -30,7 +35,7 @@ function JobDetail() {
             })}
           </p>
           <div
-            className="prose max-w-none prose-ul:list-disc prose-ul:pl-5"
+            className="job-description max-w-none"
             dangerouslySetInnerHTML={{ __html: job.description }}
           />
           <a href={job.apply_link} target="_blank" rel="noreferrer">

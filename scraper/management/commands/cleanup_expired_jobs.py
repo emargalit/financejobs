@@ -1,19 +1,16 @@
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from jobs.models import Job
-from asgiref.sync import sync_to_async
-import asyncio
-
-async def delete_all_jobs():
-    jobs = await sync_to_async(list)(Job.objects.all())
-    print(f"Deleting {len(jobs)} jobs...")
-    for job in jobs:
-        print(f"🗑️ Deleting: {job.title}")
-        await sync_to_async(job.delete)()
 
 class Command(BaseCommand):
-    help = 'Delete all saved jobs'
+    help = 'Archive expired listings without deleting records. Dry run by default.'
 
-    def handle(self, *args, **kwargs):
-        print("Starting job deletion...")
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(delete_all_jobs())
+    def add_arguments(self, parser):
+        parser.add_argument('--apply', action='store_true', help='Archive the expired listings.')
+
+    def handle(self, *args, **options):
+        jobs = Job.objects.filter(is_active=True, expires_at__lte=timezone.now())
+        if options['apply']:
+            self.stdout.write(f'Archived {jobs.update(is_active=False)} expired jobs. No records deleted.')
+        else:
+            self.stdout.write(f'Dry run: {jobs.count()} expired jobs. Use --apply to archive them.')

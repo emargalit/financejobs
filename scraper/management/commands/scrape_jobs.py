@@ -1,3 +1,5 @@
+from django.conf import settings
+from scraper.persistence import refresh_scraped_job
 import asyncio
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand
@@ -8,7 +10,7 @@ async def scrape():
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=settings.SCRAPER_HEADLESS)
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36",
             viewport={'width': 1280, 'height': 800},
@@ -71,24 +73,10 @@ async def scrape():
                 # Get or create the company object
                 company_obj, _ = await sync_to_async(Company.objects.get_or_create)(name=company_name)
 
-                # Create the job entry
-                job_exists = await sync_to_async(Job.objects.filter(
-                    title=title, company=company_obj, location=location
-                ).exists)()
-
-                if not job_exists:
-                    job = await sync_to_async(Job.objects.create)(
-                        title=title,
-                        company=company_obj,
-                        location=location,
-                        job_type=job_type,
-                        salary="",
-                        apply_link=apply_link,
-                        description=description
-                    )
-                    print("Saved:", job.id, job.title)
-                else:
-                    print("Skipped (duplicate):", title)
+                job = await sync_to_async(refresh_scraped_job)(
+                    title=title, company=company_obj, location=location,
+                    job_type=job_type, salary='', apply_link=apply_link, description=description)
+                print('Saved or refreshed:', job.id, job.title)
             except Exception as e:
                 print("Failed to save job or fetch description:", e)
 
@@ -99,5 +87,4 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         print("Starting browser...")
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(scrape())
+        asyncio.run(scrape())

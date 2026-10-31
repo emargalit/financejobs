@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { post } from './api';
 import { toast } from 'react-toastify';
 
 function NewsletterForm() {
@@ -17,29 +18,13 @@ function NewsletterForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/newsletter/subscribe/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        }
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (response.ok) {
-        toast.success("You've been subscribed!");
-        setEmail("");
-        setSuccess(true);
-      } else {
-        toast.error(data.detail || "Subscription failed.");
-      }
+      const data = await post('newsletter/subscribe/', { email });
+      toast.success(data.detail);
+      setEmail('');
+      setSuccess(true);
     } catch (error) {
       console.error("Newsletter subscription error:", error);
-      toast.error("An error occurred.");
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -57,13 +42,14 @@ function NewsletterForm() {
       {/* ✅ Inline success message */}
       {success && (
         <div className="bg-green-100 text-green-800 p-3 rounded-lg mb-4 text-center">
-          ✅ Successfully subscribed! Check your inbox soon.
+          Check your inbox and confirm your email to receive the newsletter.
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         <input
           type="email"
+          aria-label="Email address"
           placeholder="Enter your email address"
           className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-600"
           value={email}
@@ -84,7 +70,7 @@ function NewsletterForm() {
           {loading
             ? "Subscribing..."
             : success
-            ? "Subscribed ✓"
+            ? "Check your inbox"
             : "Subscribe"}
         </button>
       </form>

@@ -16,3 +16,9 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.job-description p { margin-bottom: 1rem; }
+.job-description ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+.job-description ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+.job-description h2, .job-description h3, .job-description h4 { font-weight: 700; margin: 1rem 0 .5rem; }
+.job-description a { color: #1d4ed8; text-decoration: underline; }
