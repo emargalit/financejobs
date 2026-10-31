@@ -30,7 +30,7 @@ workflows. The current publishing credential lacks that scope; CI is not yet act
 ## Paid advertisement workflow
 
 1. Employer enters the ad. A private order is saved before Stripe Checkout opens.
-2. Server sets the price (default CHF 390); the browser cannot choose it.
+2. Server sets the price (default CHF 190); the browser cannot choose it.
 3. A signature-verified Stripe webhook checks payment status, amount, currency,
    account mode, and order references. A success-page visit cannot mark an order paid.
 4. Paid orders are saved and emailed to `JOB_REVIEW_EMAIL`, with all ad details,

@@ -26,9 +26,9 @@ test('jobs list reports a failed request and allows retry', async () => {
 });
 
 test('payment failure keeps the advertisement draft and shows an error', async () => {
-  fetch.mockImplementation(url => url.includes('config') ? response({ amount: 39000, currency: 'chf', available: true, contact_email: 'owner@example.com' }) : response({ detail: 'Payment service unavailable' }, false));
+  fetch.mockImplementation(url => url.includes('config') ? response({ amount: 19000, currency: 'chf', available: true, contact_email: 'owner@example.com' }) : response({ detail: 'Payment service unavailable' }, false));
   render(<MemoryRouter><JobForm /></MemoryRouter>);
-  await screen.findByText('390 CHF');
+  await screen.findByText('190 CHF');
   for (const [label, value] of [['Job title', 'Analyst'], ['Company name', 'Bank'], ['Contact email', 'person@example.com'], ['Location', 'Zürich'], ['Application link', 'https://example.com'], ['Job description', 'An excellent role']]) {
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
   }

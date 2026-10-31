@@ -171,7 +171,7 @@ CSRF_TRUSTED_ORIGINS = list(set(CSRF_TRUSTED_ORIGINS + [FRONTEND_URL, BACKEND_UR
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 STRIPE_LIVE_MODE = config('STRIPE_LIVE_MODE', default=False, cast=bool)
-JOB_AD_AMOUNT = config('JOB_AD_AMOUNT', default=39000, cast=int)
+JOB_AD_AMOUNT = config('JOB_AD_AMOUNT', default=19000, cast=int)
 JOB_REVIEW_EMAIL = config('JOB_REVIEW_EMAIL', default='elene.margalit@gmail.com')
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],

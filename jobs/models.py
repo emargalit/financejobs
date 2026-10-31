@@ -54,7 +54,7 @@ class JobSubmission(models.Model):
     salary = models.CharField(max_length=255, blank=True)
     apply_link = models.URLField(max_length=500)
     job_type = models.CharField(max_length=100, blank=True)
-    amount = models.PositiveIntegerField(default=39000)
+    amount = models.PositiveIntegerField(default=19000)
     currency = models.CharField(max_length=3, default='chf')
     checkout_session_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     checkout_url = models.URLField(max_length=2048, blank=True)

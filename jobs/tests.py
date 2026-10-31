@@ -33,7 +33,7 @@ class WorkflowTests(TestCase):
         return JobSubmission.objects.create(**data, checkout_session_id='cs_test_order')
 
     def event(self, order, **overrides):
-        session = dict(id=order.checkout_session_id, mode='payment', payment_status='paid', amount_total=39000, currency='chf', livemode=False, client_reference_id=str(order.id), metadata={'application': 'swissfinancejobs', 'submission_id': str(order.id)})
+        session = dict(id=order.checkout_session_id, mode='payment', payment_status='paid', amount_total=19000, currency='chf', livemode=False, client_reference_id=str(order.id), metadata={'application': 'swissfinancejobs', 'submission_id': str(order.id)})
         session.update(overrides)
         return {'id': 'evt_example', 'type': 'checkout.session.completed', 'data': {'object': session}}
 
@@ -64,7 +64,7 @@ class WorkflowTests(TestCase):
         for _ in range(2):
             self.assertEqual(self.client.post('/api/checkout/', form, format='json').status_code, 200)
         self.assertEqual(create.call_count, 1)
-        self.assertEqual(create.call_args.args[0]['line_items'][0]['price_data']['unit_amount'], 39000)
+        self.assertEqual(create.call_args.args[0]['line_items'][0]['price_data']['unit_amount'], 19000)
         self.assertEqual(create.call_args.args[0]['managed_payments'], {'enabled': False})
         self.assertNotIn('payment_method_types', create.call_args.args[0])
         self.assertEqual(JobSubmission.objects.count(), 1)
