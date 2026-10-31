@@ -18,7 +18,7 @@ export default function JobDetail() {
   if (!job) return <p role="status" className="jobs-loading">Loading job…</p>;
   return <div className="job-detail-page">
     <Link to="/" className="back-to-jobs"><ArrowLeft size={16} />All opportunities</Link>
-    <header className="job-detail-header"><CompanyBadge name={job.company?.name} /><div><p className="job-employer">{job.company?.name}</p><h1>{job.title}</h1><div className="job-meta"><span><MapPin size={16} />{job.location}</span>{job.work_schedule && <span><Clock3 size={16} />{job.work_schedule}</span>}{job.job_type && <span className="job-type">{job.job_type}</span>}</div></div></header>
+    <header className="job-detail-header"><CompanyBadge name={job.company?.name} /><div><p className="job-employer">{job.company?.name}</p><h1>{job.title}</h1><div className="job-meta"><span><MapPin size={16} />{job.location}</span>{job.work_schedule && <span><Clock3 size={16} />{job.work_schedule}</span>}{job.job_type && !(job.job_type === 'Part-Time' && job.work_schedule === 'Part time') && <span className="job-type">{job.job_type}</span>}</div></div></header>
     <div className="job-detail-grid">
       <article className="job-description" dangerouslySetInnerHTML={{ __html: job.description }} />
       <aside className="job-apply-panel"><p className="section-eyebrow">YOUR NEXT STEP</p><h2>Make your move.</h2><p>{job.source ? 'Apply directly through the employer’s careers website.' : 'Visit the employer’s application page to apply.'}</p>

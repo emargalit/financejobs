@@ -54,6 +54,11 @@ def description_html(value):
     soup = BeautifulSoup(value or '', 'html.parser')
     for node in soup(['script', 'style', 'iframe', 'form', 'button', 'svg', 'noscript']):
         node.decompose()
+    for heading in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+        if len(heading.get_text(' ', strip=True)) > 180:
+            heading.name = 'p'
+        elif heading.name in ('h1', 'h5', 'h6'):
+            heading.name = 'h3'
     # SuccessFactors commonly stores bullets inside a single paragraph.
     for p in list(soup.find_all('p')):
         plain = p.get_text(' ', strip=True)

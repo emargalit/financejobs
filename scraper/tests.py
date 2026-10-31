@@ -65,6 +65,9 @@ class FeedParserTests(SimpleTestCase):
         result = description_html('<script>bad()</script><p>• Analyse investments • Manage portfolios</p>')
         self.assertNotIn('bad()', result)
         self.assertEqual(result.count('<li>'), 2)
+        intro = description_html('<h2>' + 'Employer introduction. ' * 15 + '</h2><h2>Your role</h2>')
+        self.assertTrue(intro.startswith('<p>'))
+        self.assertIn('<h2>Your role</h2>', intro)
         self.assertEqual(parse_dwr('var s0={};s0.title="L\\\'investissement";dwr.engine._remoteHandleCallback(\'1\',\'0\',{payload:s0});')['title'], "L'investissement")
         with self.assertRaises(SourceError):
             parse_dwr('<html>Temporarily unavailable</html>')

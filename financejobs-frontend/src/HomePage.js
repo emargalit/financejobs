@@ -18,6 +18,7 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const [retry, setRetry] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => { setSearch(searchTerm); setPage(1); }, 300);
@@ -47,7 +48,8 @@ export default function HomePage() {
       <header className="opportunities-hero"><div><p className="section-eyebrow">SWISS FINANCE JOBS</p><h1>Your next chapter<br /><span>in Swiss finance.</span></h1><p className="hero-description">Explore opportunities at financial institutions across Switzerland. Find your role and apply directly with the employer.</p></div><Link to="/post-job" className="hero-employer-link">Hiring exceptional talent? <span>Post a job <ArrowUpRight size={15} /></span></Link></header>
       <div className="opportunities-body">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <aside className="col-span-1">
+          <button className="md:hidden text-left rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold" aria-expanded={showFilters} aria-controls="job-filters" onClick={() => setShowFilters(!showFilters)}>{showFilters ? 'Hide filters' : 'Show filters'}</button>
+          <aside id="job-filters" className={`col-span-1 ${showFilters ? 'block' : 'hidden'} md:block`}>
             <Sidebar selectedJobType={selectedJobType} setSelectedJobType={choose(setSelectedJobType)} selectedLocation={selectedLocation} setSelectedLocation={choose(setSelectedLocation)} selectedCompany={selectedCompany} setSelectedCompany={choose(setSelectedCompany)} allLocations={filters.locations} allCompanies={filters.companies} />
           </aside>
           <div className="md:col-span-3 min-w-0">

@@ -12,7 +12,7 @@ export default function JobsList({ jobs, loading }) {
         <p className="job-employer">{job.company?.name}</p>
         <h2><Link to={`/jobs/${job.id}`}>{job.title}</Link></h2>
       </div><ArrowUpRight className="job-card-arrow" size={20} aria-hidden="true" /></div>
-      <div className="job-meta"><span><MapPin size={14} aria-hidden="true" />{job.location}</span>{job.work_schedule && <span><Clock3 size={14} aria-hidden="true" />{job.work_schedule}</span>}{job.job_type && <span className="job-type">{job.job_type}</span>}</div>
+      <div className="job-meta"><span><MapPin size={14} aria-hidden="true" />{job.location}</span>{job.work_schedule && <span><Clock3 size={14} aria-hidden="true" />{job.work_schedule}</span>}{job.job_type && !(job.job_type === 'Part-Time' && job.work_schedule === 'Part time') && <span className="job-type">{job.job_type}</span>}</div>
       <div className="job-card-footer"><span>{job.source_posted_at ? `Posted ${displayDate(job.source_posted_at)}` : `Added ${displayDate(job.posted_at)}`}{job.source && <span className="source-label"> · Employer careers site</span>}</span><Link to={`/jobs/${job.id}`} aria-label={`View role: ${job.title}`}>View role <span aria-hidden="true">→</span></Link></div>
     </li>)}
   </ul>;
