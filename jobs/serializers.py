@@ -26,6 +26,12 @@ class JobInquirySerializer(serializers.Serializer):
         return value
 
 
+class InvoiceInquirySerializer(JobInquirySerializer):
+    billing_name = serializers.CharField(max_length=255)
+    billing_address = serializers.CharField(max_length=2000)
+    billing_email = serializers.EmailField()
+
+
 class JobListSerializer(serializers.ModelSerializer):
     company = CompanySerializer(read_only=True)
 

@@ -47,7 +47,8 @@ def record_payment(session):
         return None
     with transaction.atomic():
         submission = JobSubmission.objects.select_for_update().get(checkout_session_id=session['id'])
-        if (session.get('mode') != 'payment'
+        if (submission.payment_method != 'stripe'
+                or session.get('mode') != 'payment'
                 or session.get('client_reference_id') != str(submission.id)
                 or session.get('metadata', {}).get('submission_id') != str(submission.id)
                 or session.get('amount_total') != submission.amount

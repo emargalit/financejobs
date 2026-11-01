@@ -181,3 +181,27 @@ Stripe test success/cancel/decline/replay; email receipt and retry; admin manual
 publication and expiry; newsletter confirmation/unsubscribe; deep-link rewrites;
 database durability and backup; scheduled refresh and failure alerts. No automated
 local test replaces this deployment smoke test.
+
+## Manual invoice advertisements
+
+Employers can choose **Request an invoice** on `/post-job`. The API stores the
+ad and required billing name, full address and invoice email privately, fixes
+the price server-side and emails the request to `JOB_REVIEW_EMAIL`. It does not
+issue an invoice, charge a card or publish an unpaid ad. Duplicate retries reuse
+the request UUID; notification failures retain the request for retry.
+
+Owner workflow in **Job submissions**:
+
+1. Send the CHF 190 invoice manually to the billing email and save its number in
+   **Invoice reference** on the submission.
+2. Once the bank transfer is received, select the submission and run
+   **Confirm payment received for selected invoices**. This records the time and
+   staff user and adds an admin audit entry. Stripe orders cannot use this action.
+3. Run **Publish selected paid advertisements (30 days)**. Unpaid orders are
+   rejected. Publication is idempotent and the 30 days start at publication.
+
+Publish within 2 hours of receiving payment, as promised on the form. Bank
+transfers are verified manually; there is no automatic bank reconciliation.
+`retry_notifications` and the admin retry action recover unsent invoice-request
+emails as well as paid-order notifications. Existing Stripe payment confirmation
+continues to use signed webhooks.

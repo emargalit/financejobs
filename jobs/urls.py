@@ -7,6 +7,7 @@ urlpatterns = [
     path('jobs/<int:pk>/', views.JobRetrieveAPIView.as_view(), name='job-retrieve'),
     path('companies/', views.CompanyListAPIView.as_view(), name='company-list'),
     path('checkout/config/', views.CheckoutConfigView.as_view()),
+    path('invoice-requests/', views.InvoiceRequestView.as_view()),
     path('checkout/', views.CheckoutView.as_view()),
     path('checkout/status/', views.PaymentStatusView.as_view()),
     path('stripe/webhook/', views.StripeWebhookView.as_view()),

@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from .models import Job, Company, JobSubmission, NewsletterSubscriber
-from .serializers import JobSerializer, JobListSerializer, JobInquirySerializer, CompanySerializer
+from .serializers import JobSerializer, JobListSerializer, JobInquirySerializer, InvoiceInquirySerializer, CompanySerializer
 from .payments import create_checkout, record_payment, notify_submission, retrieve_checkout, checkout_available
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class CheckoutView(APIView):
             with transaction.atomic():
                 submission, _ = JobSubmission.objects.get_or_create(id=request_id, defaults={**data, 'amount': settings.JOB_AD_AMOUNT})
                 submission = JobSubmission.objects.select_for_update().get(pk=submission.id)
-                if any(getattr(submission, key) != value for key, value in data.items()):
+                if submission.payment_method != 'stripe' or any(getattr(submission, key) != value for key, value in data.items()):
                     return Response({'detail': 'This checkout belongs to different details. Please start a new submission.'}, status=409)
                 if submission.paid_at:
                     return Response({'detail': 'This advertisement has already been paid for.'}, status=409)
@@ -108,6 +108,30 @@ class CheckoutView(APIView):
         except stripe.StripeError:
             logger.exception('Stripe checkout creation failed')
             return Response({'detail': 'Unable to open payment. Please retry; your form has been kept.'}, status=502)
+
+
+class InvoiceRequestView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'checkout'
+
+    def post(self, request):
+        from .invoices import notify_invoice_request
+        serializer = InvoiceInquirySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        request_id = data.pop('request_id')
+        with transaction.atomic():
+            submission, _ = JobSubmission.objects.get_or_create(
+                id=request_id, defaults={**data, 'amount': settings.JOB_AD_AMOUNT, 'payment_method': 'invoice'})
+            submission = JobSubmission.objects.select_for_update().get(pk=submission.id)
+            if submission.payment_method != 'invoice' or any(getattr(submission, key) != value for key, value in data.items()):
+                return Response({'detail': 'This request belongs to different details. Please start a new submission.'}, status=409)
+        try:
+            notify_invoice_request(submission.id)
+        except Exception:
+            logger.exception('Invoice request notification failed')
+            return Response({'detail': 'Your invoice request was saved but we could not send the notification. Please retry with the same details.'}, status=503)
+        return Response({'status': 'requested', 'reference': str(submission.id)}, status=200)
 
 
 class PaymentStatusView(APIView):

@@ -200,3 +200,112 @@ class WorkflowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [active.email])
         self.assertIn(str(active.unsubscribe_token), mail.outbox[0].body)
+
+
+class InvoiceWorkflowTests(TestCase):
+    setUp = WorkflowTests.setUp
+
+    def invoice_form(self):
+        return {**self.form, 'billing_name': 'Example Bank AG', 'billing_email': 'accounts@example.com', 'billing_address': 'Example Street 1\n8000 Zürich\nSwitzerland'}
+
+    def test_request_is_private_idempotent_and_server_priced(self):
+        form = {**self.invoice_form(), 'amount': 1, 'paid_at': timezone.now().isoformat(), 'published_at': timezone.now().isoformat()}
+        for _ in range(2):
+            response = self.client.post('/api/invoice-requests/', form, format='json')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(set(response.json()), {'status', 'reference'})
+        order = JobSubmission.objects.get()
+        self.assertEqual(order.amount, 19000)
+        self.assertEqual(order.payment_method, 'invoice')
+        self.assertIsNone(order.paid_at)
+        self.assertIsNone(order.published_at)
+        self.assertFalse(Job.objects.exists())
+        self.assertEqual(self.client.get('/api/jobs/').json()['count'], 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [settings.JOB_REVIEW_EMAIL])
+        self.assertIn(form['billing_address'], mail.outbox[0].body)
+        self.assertIn(form['description'], mail.outbox[0].body)
+        self.assertIn(form['billing_email'], mail.outbox[0].body)
+        with self.assertRaises(ValueError):
+            publish_submission(order.id)
+
+    def test_billing_required_and_existing_order_cannot_change_method_or_details(self):
+        self.assertEqual(self.client.post('/api/invoice-requests/', self.form, format='json').status_code, 400)
+        self.assertFalse(JobSubmission.objects.exists())
+        form = self.invoice_form()
+        self.assertEqual(self.client.post('/api/invoice-requests/', form, format='json').status_code, 200)
+        self.assertEqual(self.client.post('/api/invoice-requests/', {**form, 'billing_name': 'Changed'}, format='json').status_code, 409)
+        with patch('jobs.views.create_checkout') as create:
+            self.assertEqual(self.client.post('/api/checkout/', self.form, format='json').status_code, 409)
+            create.assert_not_called()
+        order = JobSubmission.objects.get()
+        order.payment_method = 'stripe'
+        order.save()
+        self.assertEqual(self.client.post('/api/invoice-requests/', form, format='json').status_code, 409)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_email_failure_keeps_order_and_retry_sends_once(self):
+        with patch('jobs.invoices.EmailMessage.send', side_effect=OSError('SMTP unavailable')):
+            self.assertEqual(self.client.post('/api/invoice-requests/', self.invoice_form(), format='json').status_code, 503)
+        self.assertEqual(JobSubmission.objects.count(), 1)
+        self.assertIsNone(JobSubmission.objects.get().invoice_notified_at)
+        call_command('retry_notifications', stdout=StringIO())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(self.client.post('/api/invoice-requests/', self.invoice_form(), format='json').status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+
+    @override_settings(STRIPE_SECRET_KEY='')
+    def test_invoice_requests_work_when_card_payments_are_unavailable(self):
+        self.assertEqual(self.client.post('/api/invoice-requests/', self.invoice_form(), format='json').status_code, 200)
+
+    def test_staff_confirmation_then_publication_is_auditable_and_idempotent(self):
+        from django.contrib.auth import get_user_model
+        from django.core.exceptions import PermissionDenied
+        from .invoices import confirm_invoice_payment
+        self.client.post('/api/invoice-requests/', self.invoice_form(), format='json')
+        order = JobSubmission.objects.get()
+        user = get_user_model().objects.create_user('ordinary')
+        with self.assertRaises(PermissionDenied):
+            confirm_invoice_payment(order.id, user)
+        staff = get_user_model().objects.create_superuser('owner', 'owner@example.com', 'test-only-password')
+        with self.assertRaises(ValueError):
+            confirm_invoice_payment(order.id, staff)
+        order.invoice_reference = 'SFJ-2026-001'
+        order.save()
+        self.client.force_login(staff)
+        response = self.client.post('/admin/jobs/jobsubmission/', {'action': 'confirm_invoice_paid', '_selected_action': str(order.id)})
+        self.assertEqual(response.status_code, 302)
+        order.refresh_from_db()
+        self.assertIsNotNone(order.paid_at)
+        self.assertEqual(order.invoice_paid_by, staff)
+        self.assertFalse(Job.objects.exists())
+        self.assertFalse(confirm_invoice_payment(order.id, staff))
+        job, created = publish_submission(order.id)
+        self.assertTrue(created)
+        self.assertAlmostEqual((job.expires_at - timezone.now()).total_seconds(), 30 * 86400, delta=10)
+        self.assertFalse(publish_submission(order.id)[1])
+        self.assertEqual(Job.objects.count(), 1)
+        self.assertEqual(self.client.get('/api/jobs/').json()['count'], 1)
+        self.assertNotIn('billing_address', self.client.get(f'/api/jobs/{job.id}/').json())
+        from django.contrib.admin.models import LogEntry
+        self.assertTrue(LogEntry.objects.filter(object_id=str(order.id), change_message__contains='SFJ-2026-001').exists())
+
+    def test_manual_confirmation_cannot_mark_stripe_order_paid(self):
+        from django.contrib.auth import get_user_model
+        from .invoices import confirm_invoice_payment
+        user = get_user_model().objects.create_superuser('owner', 'owner@example.com', 'test-only-password')
+        order = WorkflowTests.order(self)
+        with self.assertRaises(ValueError):
+            confirm_invoice_payment(order.id, user)
+        order.refresh_from_db()
+        self.assertIsNone(order.paid_at)
+
+    def test_stripe_event_cannot_mark_invoice_order_paid(self):
+        from .payments import record_payment
+        order = WorkflowTests.order(self)
+        order.payment_method = 'invoice'
+        order.save()
+        with self.assertRaises(ValueError):
+            record_payment(WorkflowTests.event(self, order)['data']['object'])
+        order.refresh_from_db()
+        self.assertIsNone(order.paid_at)

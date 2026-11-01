@@ -63,3 +63,36 @@ test('imported job displays employer attribution and applies on the original sit
   expect(screen.getByText('31 Oct 2026')).toBeInTheDocument();
   expect(screen.getByRole('listitem')).toHaveTextContent('Analyse portfolios');
 });
+
+test('invoice option collects billing details and confirms a private request without Stripe', async () => {
+  fetch.mockImplementation(url => url.includes('config') ? response({ amount: 19000, currency: 'chf', available: false, contact_email: 'owner@example.com' }) : response({ status: 'requested', reference: 'invoice-reference' }));
+  render(<MemoryRouter><JobForm /></MemoryRouter>);
+  await screen.findByText('190 CHF');
+  expect(screen.getByRole('button', { name: 'Continue to payment' })).toBeDisabled();
+  fireEvent.click(screen.getByLabelText('Request an invoice'));
+  for (const [label, value] of [['Job title', 'Analyst'], ['Company name', 'Bank'], ['Contact email', 'person@example.com'], ['Location', 'Zürich'], ['Application link', 'https://example.com'], ['Job description', 'An excellent role'], ['Billing company / legal name', 'Bank AG'], ['Billing address (including postal code and country)', 'Zurich, Switzerland'], ['Invoice email', 'accounts@example.com']]) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Submit invoice request' }));
+  expect(await screen.findByRole('heading', { name: 'Invoice requested' })).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('accounts@example.com');
+  expect(screen.getByText(/Your ad is not published yet/)).toBeInTheDocument();
+  const sent = JSON.parse(fetch.mock.calls.find(([url]) => url.endsWith('/invoice-requests/'))[1].body);
+  expect(sent.billing_name).toBe('Bank AG');
+  expect(sent.amount).toBeUndefined();
+  expect(fetch.mock.calls.some(([url]) => url.endsWith('/checkout/'))).toBe(false);
+  expect(sessionStorage.getItem('swiss-finance-job-draft')).toBeNull();
+});
+
+test('failed invoice notification preserves the draft and request ID for retry', async () => {
+  fetch.mockImplementation(url => url.includes('config') ? response({ amount: 19000, currency: 'chf', available: true }) : response({ detail: 'Request saved. Please retry.' }, false));
+  render(<MemoryRouter><JobForm /></MemoryRouter>);
+  await screen.findByText('190 CHF');
+  fireEvent.click(screen.getByLabelText('Request an invoice'));
+  fireEvent.submit(screen.getByRole('button', { name: 'Submit invoice request' }).closest('form'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Request saved');
+  const firstId = JSON.parse(sessionStorage.getItem('swiss-finance-job-draft')).requestId;
+  fireEvent.submit(screen.getByRole('button', { name: 'Submit invoice request' }).closest('form'));
+  await waitFor(() => expect(fetch.mock.calls.filter(([url]) => url.endsWith('/invoice-requests/'))).toHaveLength(2));
+  expect(JSON.parse(sessionStorage.getItem('swiss-finance-job-draft')).requestId).toBe(firstId);
+});

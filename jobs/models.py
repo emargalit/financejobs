@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from datetime import timedelta
 from django.db import models
 from django.utils import timezone
@@ -62,6 +63,13 @@ class JobSubmission(models.Model):
     salary = models.CharField(max_length=255, blank=True)
     apply_link = models.URLField(max_length=500)
     job_type = models.CharField(max_length=100, blank=True)
+    payment_method = models.CharField(max_length=10, choices=[('stripe', 'Stripe'), ('invoice', 'Invoice')], default='stripe')
+    billing_name = models.CharField(max_length=255, blank=True)
+    billing_address = models.TextField(blank=True)
+    billing_email = models.EmailField(blank=True)
+    invoice_reference = models.CharField(max_length=150, blank=True, help_text='Enter the invoice number before confirming receipt of payment.')
+    invoice_notified_at = models.DateTimeField(null=True, blank=True)
+    invoice_paid_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     amount = models.PositiveIntegerField(default=19000)
     currency = models.CharField(max_length=3, default='chf')
     checkout_session_id = models.CharField(max_length=255, unique=True, null=True, blank=True)

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, post } from './api';
 
-const emptyForm = { title: '', company_name: '', contact_email: '', location: '', salary: '', apply_link: '', job_type: '', description: '' };
+const emptyForm = { payment_method: 'stripe', billing_name: '', billing_address: '', billing_email: '', title: '', company_name: '', contact_email: '', location: '', salary: '', apply_link: '', job_type: '', description: '' };
 const jobTypes = ['Permanent', 'Internships / Graduate Programs', 'Fixed-Term / Contract', 'Part-Time'];
 const storageKey = 'swiss-finance-job-draft';
 function readDraft() {
@@ -12,6 +12,8 @@ function readDraft() {
 export default function JobForm() {
   const [formData, setFormData] = useState(() => ({ ...emptyForm, ...readDraft().formData }));
   const [config, setConfig] = useState(null);
+  const [invoiceReference, setInvoiceReference] = useState('');
+  const invoice = formData.payment_method === 'invoice';
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [params] = useSearchParams();
@@ -32,7 +34,15 @@ export default function JobForm() {
     try {
       if (!requestId.current) requestId.current = crypto.randomUUID();
       try { sessionStorage.setItem(storageKey, JSON.stringify({ formData, requestId: requestId.current })); } catch {}
-      const data = await post('checkout/', { ...formData, request_id: requestId.current });
+      const { payment_method, billing_name, billing_address, billing_email, ...advertisement } = formData;
+      if (invoice) {
+        const data = await post('invoice-requests/', { ...advertisement, billing_name, billing_address, billing_email, request_id: requestId.current });
+        setInvoiceReference(data.reference);
+        try { sessionStorage.removeItem(storageKey); } catch {}
+        setIsSubmitting(false);
+        return;
+      }
+      const data = await post('checkout/', { ...advertisement, request_id: requestId.current });
       const checkout = new URL(data.url);
       if (checkout.protocol !== 'https:' || checkout.hostname !== 'checkout.stripe.com') throw new Error('Invalid checkout destination. Please contact support.');
       window.location.assign(checkout.href);
@@ -45,19 +55,33 @@ export default function JobForm() {
     }
   }
 
+  if (invoiceReference) return <div className="max-w-2xl mx-auto p-6 bg-white shadow rounded-xl">
+    <h1 className="text-2xl font-bold mb-4">Invoice requested</h1>
+    <p role="status">We’ve received your advertisement and billing details. We’ll send the invoice to {formData.billing_email}.</p>
+    <p className="mt-4">Your ad is not published yet. We’ll publish it within 2 hours of receiving payment. Your 30 days start when the ad goes live.</p>
+    <p className="mt-4 text-sm break-all">Request reference: {invoiceReference}</p>
+    <Link to="/" className="inline-block mt-6 text-blue-700 underline">Back to jobs</Link>
+  </div>;
+
   return <div className="max-w-2xl mx-auto p-6 bg-white shadow rounded-xl">
     <Link to="/" className="text-blue-700 underline">← Back to jobs</Link>
     <h1 className="text-2xl font-bold my-5">Post a job</h1>
     <div className="bg-blue-50 border border-blue-100 p-5 rounded-lg mb-6">
       <h2 className="font-semibold">Standard listing · 30 days</h2>
       <p className="text-3xl font-bold text-blue-800 mt-2">{config ? `${(config.amount / 100).toLocaleString('en-CH')} ${config.currency.toUpperCase()}` : 'Loading price…'}</p>
-      <p className="mt-3">Submit your job ad and pay securely with Stripe. We’ll publish it within 2 hours of payment. Your ad will stay live for 30 days from publication.</p>
+      <p className="mt-3">Submit your job ad and pay securely with Stripe or request an invoice. We’ll publish it within 2 hours of receiving payment. Your ad will stay live for 30 days from publication.</p>
       {config && <p className="mt-2 text-sm">Questions or a refund request? <a className="underline" href={`mailto:${config.contact_email}`}>{config.contact_email}</a></p>}
     </div>
     {params.has('cancelled') && <p role="status" className="bg-amber-50 p-3 mb-4">Checkout was cancelled. Your draft is saved in this tab; you can return to payment below.</p>}
     {error && <p role="alert" className="bg-red-50 text-red-800 p-3 mb-4">{error}</p>}
     {config && !config.available && <p role="status" className="p-3 mb-4 bg-amber-50">Online payments are temporarily unavailable. Please contact us or try again later.</p>}
     <form onSubmit={submit} className="space-y-4">
+      <fieldset disabled={isSubmitting} className="border rounded-lg p-4 space-y-3">
+        <legend className="font-semibold px-1">Payment option</legend>
+        <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="payment_method" value="stripe" checked={!invoice} onChange={change} /> Pay securely with Stripe</label>
+        <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="payment_method" value="invoice" checked={invoice} onChange={change} /> Request an invoice</label>
+        {invoice && <p className="text-sm text-gray-700">We’ll email you an invoice for payment by bank transfer. Your ad will be published within 2 hours of receiving payment and stay live for 30 days from publication.</p>}
+      </fieldset>
       {[
         ['title', 'Job title', 'text', true], ['company_name', 'Company name', 'text', true],
         ['contact_email', 'Contact email', 'email', true], ['location', 'Location', 'text', true],
@@ -70,8 +94,14 @@ export default function JobForm() {
         <select id="job_type" name="job_type" value={formData.job_type} onChange={change} disabled={isSubmitting} className="w-full p-3 border rounded-md"><option value="">Select a job type</option>{jobTypes.map(type => <option key={type}>{type}</option>)}</select></div>
       <div><label htmlFor="description" className="block font-medium mb-1">Job description</label>
         <textarea id="description" name="description" required rows={10} maxLength={20000} value={formData.description} onChange={change} disabled={isSubmitting} className="w-full p-3 border rounded-md" /></div>
-      <p className="text-sm text-gray-600">Your contact email and draft are used to process this advertisement. Card details are handled by Stripe. Payment does not publish the advertisement automatically.</p>
-      <button disabled={isSubmitting || !config?.available} className="w-full bg-blue-700 text-white font-semibold p-3 rounded-md disabled:opacity-50">{isSubmitting ? 'Opening secure checkout…' : 'Continue to payment'}</button>
+      {invoice && <fieldset disabled={isSubmitting} className="border rounded-lg p-4 space-y-4">
+        <legend className="font-semibold px-1">Billing details</legend>
+        <div><label htmlFor="billing_name" className="block font-medium mb-1">Billing company / legal name</label><input id="billing_name" name="billing_name" required maxLength={255} value={formData.billing_name} onChange={change} className="w-full p-3 border rounded-md" /></div>
+        <div><label htmlFor="billing_address" className="block font-medium mb-1">Billing address (including postal code and country)</label><textarea id="billing_address" name="billing_address" required rows={3} maxLength={2000} value={formData.billing_address} onChange={change} className="w-full p-3 border rounded-md" /></div>
+        <div><label htmlFor="billing_email" className="block font-medium mb-1">Invoice email</label><input id="billing_email" name="billing_email" type="email" required maxLength={254} value={formData.billing_email} onChange={change} className="w-full p-3 border rounded-md" /></div>
+      </fieldset>}
+      <p className="text-sm text-gray-600">Your billing details, contact email and draft are used to process this advertisement. Card details are handled by Stripe. Payment does not publish the advertisement automatically.</p>
+      <button disabled={isSubmitting || !config || (!invoice && !config.available)} className="w-full bg-blue-700 text-white font-semibold p-3 rounded-md disabled:opacity-50">{isSubmitting ? (invoice ? 'Sending invoice request…' : 'Opening secure checkout…') : (invoice ? 'Submit invoice request' : 'Continue to payment')}</button>
     </form>
   </div>;
 }
