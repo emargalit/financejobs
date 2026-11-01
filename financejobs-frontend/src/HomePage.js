@@ -44,7 +44,7 @@ export default function HomePage() {
 
   const choose = setter => value => { setter(value); setPage(1); };
   return (
-    <div className="opportunities-page min-h-screen w-full bg-cover bg-center" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/seanpollock.jpg)` }}>
+    <div className="opportunities-page min-h-screen w-full bg-cover bg-center" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/seanpollock.jpg)`, backgroundAttachment: 'fixed' }}>
       <div className="bg-white/70 min-h-screen px-4 md:px-10">
       <header className="opportunities-hero"><div><p className="section-eyebrow">SWISS FINANCE JOBS</p><h1>Your next chapter<br /><span>in Swiss finance.</span></h1><p className="hero-description">Explore finance roles in investment management, banking, accounting, risk and compliance across Switzerland. Apply directly with the employer.</p></div><Link to="/post-job" className="hero-employer-link">Hiring exceptional talent? <span>Post a job <ArrowUpRight size={15} /></span></Link></header>
       <div className="opportunities-body">
