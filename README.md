@@ -134,8 +134,12 @@ cron expressions below are suggestions, not provisioned resources:
 
 The five active sources are **LGT**, **Julius Bär**, **Pictet**, **Vontobel** and
 **Lombard Odier**. Imports use the employers' public Workday / SuccessFactors
-careers feeds over HTTPS; Chromium is not needed. Only Swiss vacancies are
-published. Employer descriptions are sanitized and original application links
+careers feeds over HTTPS; Chromium is not needed. Only Swiss vacancies with a clear finance role are
+published. `scraper/roles.py` applies a conservative title-based editorial filter:
+finance, investments, banking, accounting, risk, compliance and related operations
+are eligible; engineering, IT and unrelated support roles are excluded even when
+the title contains finance keywords. Ambiguous titles are withheld for review.
+Employer names and generic description text do not establish relevance. Employer descriptions are sanitized and original application links
 are retained. The board is independent and does not claim an employer partnership.
 
 ```sh
@@ -143,6 +147,9 @@ are retained. The board is independent and does not claim an employer partnershi
 python manage.py refresh_jobs --source pictet --export /tmp/pictet-review.json
 # Fetch and publish all five feeds
 python manage.py refresh_jobs --apply
+# Preview / apply the same scope to existing imported jobs (no new scrape)
+python manage.py filter_imported_jobs --details
+python manage.py filter_imported_jobs --apply
 # Each source also has its own command
 python manage.py scrape_lgt --apply
 ```
@@ -150,7 +157,9 @@ python manage.py scrape_lgt --apply
 Each complete source is validated before its database transaction begins. Source
 and requisition ID prevent duplicate imports; employer posting dates remain
 separate from the import date. A successful complete refresh archives that
-source's missing listings. Failed, truncated or empty feeds leave its existing
+source's missing or out-of-scope listings. A complete nonempty feed with zero
+finance roles archives its previous imported roles; an empty raw feed is still
+rejected. Scope cleanup only hides records and preserves dates and descriptions. Failed, truncated or empty feeds leave its existing
 listings untouched and return a failing command status. Paid advertisements are
 never changed or archived by imports. Each observation renews imported listings
 for 30 days so a broken feed cannot leave stale jobs visible indefinitely.

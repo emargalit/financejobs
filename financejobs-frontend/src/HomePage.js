@@ -45,7 +45,7 @@ export default function HomePage() {
   const choose = setter => value => { setter(value); setPage(1); };
   return (
     <div className="opportunities-page">
-      <header className="opportunities-hero"><div><p className="section-eyebrow">SWISS FINANCE JOBS</p><h1>Your next chapter<br /><span>in Swiss finance.</span></h1><p className="hero-description">Explore opportunities at financial institutions across Switzerland. Find your role and apply directly with the employer.</p></div><Link to="/post-job" className="hero-employer-link">Hiring exceptional talent? <span>Post a job <ArrowUpRight size={15} /></span></Link></header>
+      <header className="opportunities-hero"><div><p className="section-eyebrow">SWISS FINANCE JOBS</p><h1>Your next chapter<br /><span>in Swiss finance.</span></h1><p className="hero-description">Explore finance roles in investment management, banking, accounting, risk and compliance across Switzerland. Apply directly with the employer.</p></div><Link to="/post-job" className="hero-employer-link">Hiring exceptional talent? <span>Post a job <ArrowUpRight size={15} /></span></Link></header>
       <div className="opportunities-body">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <button className="md:hidden text-left rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold" aria-expanded={showFilters} aria-controls="job-filters" onClick={() => setShowFilters(!showFilters)}>{showFilters ? 'Hide filters' : 'Show filters'}</button>

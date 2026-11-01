@@ -4,6 +4,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 from scraper.sources import SOURCES, collect
 from scraper.persistence import publish_source
+from scraper.roles import classify_role
 
 
 class Command(BaseCommand):
@@ -22,7 +23,7 @@ class Command(BaseCommand):
             try:
                 listings = collect(source)
                 exported.extend(asdict(job) for job in listings)
-                report = publish_source(source, listings) if options['apply'] else {'validated': len(listings), 'published': False}
+                report = publish_source(source, listings) if options['apply'] else {'validated': len(listings), 'eligible': sum(classify_role(job.title).include for job in listings), 'excluded': sum(not classify_role(job.title).include for job in listings), 'published': False}
                 self.stdout.write(f'{source}: {json.dumps(report)}')
                 self.stdout.flush()
             except Exception as error:

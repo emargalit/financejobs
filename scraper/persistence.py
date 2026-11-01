@@ -35,12 +35,16 @@ def publish_source(source, listings):
         if listing.source != source or listing.source_job_id in identifiers:
             raise SourceError('Mismatched source or duplicate source job ID')
         identifiers.add(listing.source_job_id)
+    from .roles import classify_role
+    eligible = [listing for listing in listings if classify_role(listing.title).include]
+    # An empty raw feed is unsafe; a complete feed with no relevant roles is valid.
+    identifiers = {listing.source_job_id for listing in eligible}
     created = updated = protected = 0
     with transaction.atomic():
         company, _ = Company.objects.get_or_create(name=SOURCES[source][0], defaults={'company_type': 'Financial institution'})
         # Serialize concurrent imports for this institution.
         Company.objects.select_for_update().get(pk=company.pk)
-        for listing in listings:
+        for listing in eligible:
             job = Job.objects.filter(source=source, source_job_id=listing.source_job_id).first()
             if job is None:
                 job = Job.objects.filter(company=company, source='', jobsubmission__isnull=True, apply_link=listing.source_url).first()
@@ -63,4 +67,4 @@ def publish_source(source, listings):
             job.expires_at = listing_expiry()
             job.save()
         archived = Job.objects.filter(source=source, is_active=True, jobsubmission__isnull=True).exclude(source_job_id__in=identifiers).update(is_active=False)
-    return {'created': created, 'updated': updated, 'archived': archived, 'protected': protected, 'total': len(listings)}
+    return {'created': created, 'updated': updated, 'archived': archived, 'protected': protected, 'total': len(listings), 'eligible': len(eligible), 'excluded': len(listings) - len(eligible)}

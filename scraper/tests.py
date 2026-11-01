@@ -114,3 +114,95 @@ class PublicationTests(TestCase):
         self.assertEqual(response['source'], 'lgt')
         self.assertEqual(response['source_url'], listing().source_url)
         self.assertNotIn('onerror', response['description'])
+
+
+class FinanceScopeTests(SimpleTestCase):
+    def test_finance_roles_including_quant_and_banking_operations(self):
+        from scraper.roles import classify_role
+        for title in (
+            'Investment Analyst', 'Group Head of Financial Risk',
+            'Credit Officer - Mortgages', 'Relationship Manager EAM',
+            'Financial Accountant', 'Financial Engineer - Structured Products',
+            'Senior Non-Financial Risk Expert', 'Tax Reporting Specialist',
+            'Fund Corporate Actions Specialist', 'EAM Banker - Business Developer',
+            'Quantitative Research Intern – AI for Investment Research',
+            'Internship: Data Analytics Intern - Product Control',
+            'Junior Business Analyst – Banking Operations Transformation',
+            'Senior Chargé-e de Comptes Global Custody', 'Gérant de portefeuille',
+            'Kundenberater Private Banking', 'Spezialist Rechnungswesen / Buchhaltung',
+        ):
+            with self.subTest(title=title):
+                self.assertTrue(classify_role(title).include)
+
+    def test_technical_finance_keywords_do_not_admit_technology_roles(self):
+        from scraper.roles import classify_role
+        for title in (
+            'Chapter Lead - Forward-Deployed Engineering', 'Data Architect',
+            'AML Application Engineer', 'Software Engineer - Cash Management Tool',
+            'AI Software Engineer - AI-Powered Portfolio Intelligence',
+            'Data Analytics Expert', 'Business Application Support Specialist – Finance',
+            'Front Arena Trading Systems Specialist (Equities & Derivatives)',
+            'Business Manager – IT Chief of Staff', 'IT Risk Manager',
+            'Senior Test Manager - Core Banking & Pricing System Integration',
+            'Product Owner – Portfolio Analysis & Position Management',
+            'Senior Project Lead - FX, PM & ETDs e-Trading',
+            'HR Business Partner', 'Regional Marketing Officer', 'Receptionist',
+            'Project Manager', 'Head of Spain', 'Research Associate',
+        ):
+            with self.subTest(title=title):
+                self.assertFalse(classify_role(title).include)
+
+
+class FinancePublicationTests(TestCase):
+    def test_import_excludes_engineering_and_archives_roles_that_change_scope(self):
+        publish_source('lgt', [listing()])
+        report = publish_source('lgt', [replace(listing(), title='AML Application Engineer'), listing('finance-2')])
+        self.assertEqual(report['excluded'], 1)
+        self.assertEqual(report['archived'], 1)
+        self.assertFalse(Job.objects.get(source_job_id='job-1').is_active)
+        self.assertEqual(list(Job.objects.filter(is_active=True).values_list('source_job_id', flat=True)), ['finance-2'])
+        report = publish_source('lgt', [replace(listing(), title='Data Architect')])
+        self.assertEqual(report['eligible'], 0)
+        self.assertFalse(Job.objects.filter(is_active=True).exists())
+        self.assertEqual(Job.objects.count(), 2)
+
+    def test_filtered_out_invalid_feed_still_cannot_archive(self):
+        publish_source('lgt', [listing()])
+        with self.assertRaises(SourceError):
+            publish_source('lgt', [replace(listing(), title='Data Engineer', description='broken')])
+        self.assertTrue(Job.objects.get().is_active)
+
+    def test_cleanup_is_previewable_idempotent_and_protects_paid_and_manual_jobs(self):
+        from io import StringIO
+        from django.core.management import call_command
+        publish_source('lgt', [listing(), listing('paid'), listing('keep')])
+        obsolete = Job.objects.get(source_job_id='job-1')
+        obsolete.title = 'Data Architect'
+        obsolete.save()
+        paid = Job.objects.get(source_job_id='paid')
+        paid.title = 'Software Engineer'
+        paid.save()
+        JobSubmission.objects.create(title=paid.title, company_name='LGT', contact_email='owner@example.com', location='Zürich', description='Paid', apply_link='https://example.com', job=paid, paid_at=timezone.now())
+        manual = Job.objects.create(title='Receptionist', company=paid.company, location='Bern', description='Manually reviewed', apply_link='https://example.com')
+        original_expiry, original_seen = obsolete.expires_at, obsolete.last_seen_at
+        out = StringIO()
+        call_command('filter_imported_jobs', stdout=out)
+        self.assertEqual(json.loads(out.getvalue())['excluded'], 1)
+        obsolete.refresh_from_db()
+        self.assertTrue(obsolete.is_active)
+        call_command('filter_imported_jobs', apply=True, stdout=StringIO())
+        obsolete.refresh_from_db(); paid.refresh_from_db(); manual.refresh_from_db()
+        self.assertFalse(obsolete.is_active)
+        self.assertEqual((obsolete.expires_at, obsolete.last_seen_at), (original_expiry, original_seen))
+        self.assertTrue(paid.is_active)
+        self.assertTrue(manual.is_active)
+        self.assertEqual(self.client.get(f'/api/jobs/{obsolete.pk}/').status_code, 404)
+        self.assertNotIn(obsolete.pk, [j['id'] for j in self.client.get('/api/jobs/').json()['results']])
+        out = StringIO()
+        call_command('filter_imported_jobs', apply=True, stdout=out)
+        self.assertEqual(json.loads(out.getvalue())['archived'], 0)
+        # Refresh cannot reactivate unrelated jobs and cannot modify paid ads.
+        publish_source('lgt', [replace(listing(), title='Data Architect'), replace(listing('paid'), title='Software Engineer'), listing('keep')])
+        obsolete.refresh_from_db(); paid.refresh_from_db()
+        self.assertFalse(obsolete.is_active)
+        self.assertTrue(paid.is_active)
